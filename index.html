@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Voice to Sketch AI</title>
+  <style>
+    :root {
+      --bg-color: #1b1f3a;
+      --text-color: #e0e0e0;
+      --card-color: #2a2e45;
+      --highlight: #00bcd4;
+    }
+
+    body.light {
+      --bg-color: #f5f5f5;
+      --text-color: #111;
+      --card-color: #fff;
+      --highlight: #2196f3;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      text-align: center;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    #voiceBtn {
+      background: linear-gradient(135deg, #7f00ff, var(--highlight));
+      color: var(--text-color);
+      border: none;
+      padding: 14px 28px;
+      font-size: 18px;
+      font-weight: bold;
+      border-radius: 12px;
+      box-shadow: 4px 4px 0 #000;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      transform: skewX(-5deg);
+      margin: 10px;
+    }
+
+    #voiceBtn:hover {
+      transform: scale(1.05) skewX(-5deg);
+      box-shadow: 6px 6px 0 #000;
+    }
+
+    #voiceBtn.listening {
+      background: #00bfff !important;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(0, 191, 255, 0.5); }
+      70%  { box-shadow: 0 0 0 20px rgba(0, 191, 255, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(0, 191, 255, 0); }
+    }
+
+    #voiceBtn.processing {
+      background: #8a2be2 !important;
+      color: #eaeaea;
+      box-shadow: none;
+    }
+
+    #promptText {
+      font-family: 'Georgia', cursive;
+      font-size: 20px;
+      color: #bbdefb;
+      font-style: italic;
+      margin-top: 20px;
+    }
+
+    #styleSelect {
+      padding: 8px;
+      font-size: 16px;
+      border-radius: 6px;
+      background-color: var(--card-color);
+      color: var(--text-color);
+      border: 1px solid #555;
+      margin-bottom: 15px;
+    }
+
+    #result {
+      display: none;
+      margin: 30px auto;
+      max-width: 80%;
+      border: 2px solid var(--highlight);
+      background-color: var(--card-color);
+      padding: 8px;
+      border-radius: 10px;
+    }
+
+    #downloadBtn {
+      display: none;
+      margin-top: 10px;
+    }
+
+    #downloadBtn button {
+      background: #009688;
+      color: var(--text-color);
+      border: none;
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    #downloadBtn button:hover {
+      background: #00796b;
+    }
+
+    #history {
+      margin-top: 40px;
+    }
+
+    #history h3 {
+      color: #bbdefb;
+      margin-bottom: 10px;
+    }
+
+    .history-images {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    .history-images img {
+      width: 120px;
+      height: auto;
+      border-radius: 8px;
+      border: 2px solid #555;
+      cursor: pointer;
+    }
+
+    .history-images img:hover {
+      transform: scale(1.05);
+    }
+
+    #themeToggle {
+      margin-top: 15px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎤 Voice to Sketch</h1>
+
+  <select id="styleSelect">
+    <option value="black and white pencil sketch of">✏️ Pencil Sketch</option>
+    <option value="watercolor painting of">🎨 Watercolor Painting</option>
+    <option value="oil painting of">🛢️ Oil Painting</option>
+    <option value="realistic painting of">🖼️ Realistic Painting</option>
+    <option value="cartoon drawing of">🤖 Cartoon Style</option>
+  </select>
+
+  <div class="button-wrapper">
+    <button id="voiceBtn" onclick="start()">🎙️ Speak to Draw</button>
+  </div>
+
+  <div id="promptText"></div>
+
+  <img id="result" />
+
+  <a id="downloadBtn" href="#" download="sketch.png">
+    <button>📥 Download Image</button>
+  </a>
+
+  <div id="history" style="display:none;">
+    <h3>🖼️ Recent Sketches</h3>
+    <div class="history-images" id="historyImages"></div>
+  </div>
+
+  <div id="themeToggle">🌗 Toggle Light/Dark</div>
+
+  <script>
+    const imageHistory = JSON.parse(localStorage.getItem("imageHistory")) || [];
+
+    const btn = document.getElementById("voiceBtn");
+    const promptText = document.getElementById("promptText");
+    const resultImg = document.getElementById("result");
+    const downloadBtn = document.getElementById("downloadBtn");
+    const historyContainer = document.getElementById("history");
+    const historyImages = document.getElementById("historyImages");
+
+    function updateHistoryUI() {
+      if (imageHistory.length === 0) return;
+      historyImages.innerHTML = "";
+      imageHistory.forEach(src => {
+        const img = document.createElement("img");
+        img.src = src;
+        img.onclick = () => {
+          resultImg.src = src;
+          resultImg.style.display = "block";
+          downloadBtn.href = src;
+          downloadBtn.style.display = "inline-block";
+        };
+        historyImages.appendChild(img);
+      });
+      historyContainer.style.display = "block";
+    }
+
+    updateHistoryUI();
+
+    function start() {
+      const recog = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recog.lang = "en-US";
+      recog.start();
+
+      const style = document.getElementById("styleSelect").value;
+
+      btn.classList.remove("processing");
+      btn.classList.add("listening");
+      btn.innerText = "🎧 Listening...";
+
+      recog.onresult = async function(e) {
+        const text = e.results[0][0].transcript;
+        promptText.innerText = `🧠 You said: "${text}"`;
+        btn.classList.remove("listening");
+        btn.classList.add("processing");
+        btn.innerText = "⏳ Processing...";
+
+        const res = await fetch("/draw", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ command: text, style })
+        });
+
+        const data = await res.json();
+        btn.classList.remove("processing");
+        btn.innerText = "🎙️ Speak to Draw";
+
+        if (data.status === "ok") {
+          resultImg.src = data.image;
+          resultImg.style.display = "block";
+          downloadBtn.href = data.image;
+          downloadBtn.style.display = "inline-block";
+          promptText.innerText = `✅ Here's your ${style} for: "${text}"`;
+
+          imageHistory.unshift(data.image);
+          if (imageHistory.length > 6) imageHistory.pop();
+          localStorage.setItem("imageHistory", JSON.stringify(imageHistory));
+          updateHistoryUI();
+        } else {
+          promptText.innerText = "❌ " + data.message;
+        }
+      };
+
+      recog.onerror = function(err) {
+        btn.classList.remove("listening", "processing");
+        btn.innerText = "🎙️ Speak to Draw";
+        promptText.innerText = "❌ Error: " + err.error;
+      };
+    }
+
+    document.getElementById("themeToggle").onclick = () => {
+      document.body.classList.toggle("light");
+    };
+  </script>
+</body>
+</html>
